@@ -54,6 +54,7 @@ class Ebizmarts_MailChimp_Model_Config
 
     const WARNING_MESSAGE           = 'mailchimp/warning_message';
     const POPUP_MESSAGE             = 'mailchimp/popup_message';
+    const RESET_MESSAGE             = 'mailchimp/reset_message';
 
     const MANDRILL_APIKEY           = 'mandrill/general/apikey';
     const MANDRILL_ACTIVE           = 'mandrill/general/active';

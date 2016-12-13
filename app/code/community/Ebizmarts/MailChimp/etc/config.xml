@@ -246,8 +246,9 @@
                 <popup_cookie_time>1</popup_cookie_time>
                 <popup_insist>1</popup_insist>
             </emailcatcher>
-            <warning_message><![CDATA[Warning. If you save the configuration, the current store in mailchimp will be recreated]]></warning_message>
+            <warning_message><![CDATA[Warning. If you save the configuration, a new store will be created for this scope.]]></warning_message>
             <popup_message><![CDATA[This will affect Automations created on your MailChimp account. Do you want to proceed?]]></popup_message>
+            <reset_message><![CDATA[Are you sure you want to create a MailChimp store for this scope?]]></reset_message>
         </mailchimp>
     </default>
     <crontab>

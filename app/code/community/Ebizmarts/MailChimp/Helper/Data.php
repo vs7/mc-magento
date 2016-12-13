@@ -164,7 +164,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
     public function resetMCEcommerceData($deleteDataInMailchimp = false, $scope, $scopeId)
     {
         $ecommerceEnabled = Mage::getModel('mailchimp/config')->getEcommerceEnabled($scope, $scopeId);
-        $apikey = Mage::getModel('mailchimp/config')->getApi($scope, $scopeId);
+        $apikey = Mage::getModel('mailchimp/config')->getApiKey($scope, $scopeId);
         $listId = Mage::getModel('mailchimp/config')->getDefaultList($scope, $scopeId);
         $MCStoreId = Mage::getModel('mailchimp/config')->getMCStoreIdForScope($scope, $scopeId);
 
@@ -185,7 +185,6 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         Mage::getConfig()->saveConfig(Ebizmarts_MailChimp_Model_Config::GENERAL_MCMINSYNCDATEFLAG, Varien_Date::now(), $scope, $scopeId);
         Mage::getConfig()->saveConfig(Ebizmarts_MailChimp_Model_Config::GENERAL_MCSTORE_RESETED, 1, $scope, $scopeId);
         Mage::getConfig()->cleanCache();
-
         $this->resetErrors($scope, $scopeId);
     }
 
@@ -256,10 +255,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function resetErrors($scope, $scopeId)
     {
+        Mage::log(__METHOD__, null, 'reset.log', true);
         // reset products with errors
         $collection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
             ->addFieldToFilter('mailchimp_sync_error', array('notnull' => true))
             ->addFieldToFilter('scope', array('eq' => $scope . '_' . $scopeId));
+        Mage::log('count '.count($collection), null, 'reset.log', true);
         foreach ($collection as $productSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_PRODUCT))

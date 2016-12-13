@@ -54,4 +54,12 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_ResetEcommerceData
         return Mage::helper('adminhtml')->getUrl('adminhtml/ecommerce/resetEcommerceData', array('scope' => $scopeString));
     }
 
+    /**
+     * @return string
+     */
+    public function getMessage()
+    {
+        return __(Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::RESET_MESSAGE));
+    }
+
 }
