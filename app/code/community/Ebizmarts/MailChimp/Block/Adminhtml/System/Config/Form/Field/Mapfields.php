@@ -43,9 +43,7 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Form_Field_Mapfields ext
                 $this->_customerAttributes[$option['attribute_id']] = $option['frontend_label'];
             }
         }
-        $customFieldTypes = unserialize(
-            Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_CUSTOM_MAP_FIELDS)
-        );
+        $customFieldTypes = unserialize(Mage::getModel('mailchimp/config')->getCustomMapFields());
         if(is_array($customFieldTypes)) {
             foreach ($customFieldTypes as $customFieldType) {
                 $label = $customFieldType['label'];
@@ -56,6 +54,11 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Form_Field_Mapfields ext
         ksort($this->_customerAttributes);
     }
 
+    /**
+     * @param string $columnName
+     * @return string
+     * @throws Exception
+     */
     protected function _renderCellTemplate($columnName)
     {
         if (empty($this->_columns[$columnName])) {
@@ -75,11 +78,17 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Form_Field_Mapfields ext
         }
         return $rendered;
     }
-    
+
+    /**
+     * @return mixed
+     */
     protected function _getMailChimpValue(){
         return Mage::getSingleton('core/session')->getMailchimpValue();
     }
 
+    /**
+     * @return mixed
+     */
     protected function _getMailChimpLabel(){
         return Mage::getSingleton('core/session')->getMailchimpLabel();
     }

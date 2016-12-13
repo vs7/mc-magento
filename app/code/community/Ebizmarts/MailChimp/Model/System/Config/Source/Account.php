@@ -25,12 +25,13 @@ class Ebizmarts_MailChimp_Model_System_Config_Source_Account
      */
     public function __construct()
     {
-        $mcStoreId = (Mage::helper('mailchimp')->getMCStoreId()) ? Mage::helper('mailchimp')->getMCStoreId() : null;
-        $api = Mage::helper('mailchimp')->getApi();
+        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
+        $mcStoreId = Mage::getModel('mailchimp/config')->getMCStoreId($scopeArray[0], $scopeArray[1]);
+        $api = Mage::helper('mailchimp')->getApi($scopeArray[0], $scopeArray[1]);
         if ($api) {
             try {
                 $this->_accountDetails = $api->root->info('account_name,total_subscribers');
-                if (Mage::helper('mailchimp')->getMCStoreId()) {
+                if (Mage::getModel('mailchimp/config')->getMCStoreId($scopeArray[0], $scopeArray[1])) {
                     $this->_accountDetails['store_exists'] = true;
                     $totalCustomers = $api->ecommerce->customers->getAll($mcStoreId, 'total_items');
                     $this->_accountDetails['total_customers'] = $totalCustomers['total_items'];
@@ -58,24 +59,25 @@ class Ebizmarts_MailChimp_Model_System_Config_Source_Account
     public function toOptionArray()
     {
         $helper = Mage::helper('mailchimp');
+        $scopeArray = explode('-', $helper->getScopeString());
         if (is_array($this->_accountDetails)) {
-            $totalSubscribersText = Mage::helper('mailchimp')->__('Total subscribers:');
+            $totalSubscribersText = $helper->__('Total subscribers:');
             $totalSubscribers = $totalSubscribersText . ' ' . $this->_accountDetails['total_subscribers'];
-            $username = Mage::helper('mailchimp')->__('Username:') . ' ' . $this->_accountDetails['account_name'];
-            $title = Mage::helper('mailchimp')->__('Ecommerce Data uploaded to MailChimp:');
+            $username = $helper->__('Username:') . ' ' . $this->_accountDetails['account_name'];
+            $title = $helper->__('Ecommerce Data uploaded to MailChimp:');
             $returnArray = array(
                 array('value' => 0, 'label' => $username),
                 array('value' => 1, 'label' => $totalSubscribers),
                 array('value' => 2, 'label' => $title)
             );
             if ($this->_accountDetails['store_exists']) {
-                $totalCustomersText = Mage::helper('mailchimp')->__('  Total Customers:');
+                $totalCustomersText = $helper->__('  Total Customers:');
                 $totalCustomers = $totalCustomersText . ' ' . $this->_accountDetails['total_customers'];
-                $totalProductsText = Mage::helper('mailchimp')->__('  Total Products:');
+                $totalProductsText = $helper->__('  Total Products:');
                 $totalProducts = $totalProductsText . ' ' . $this->_accountDetails['total_products'];
-                $totalOrdersText = Mage::helper('mailchimp')->__('  Total Orders:');
+                $totalOrdersText = $helper->__('  Total Orders:');
                 $totalOrders = $totalOrdersText . ' ' . $this->_accountDetails['total_orders'];
-                $totalCartsText = Mage::helper('mailchimp')->__('  Total Carts:');
+                $totalCartsText = $helper->__('  Total Carts:');
                 $totalCarts = $totalCartsText . ' ' . $this->_accountDetails['total_carts'];
                 $returnArray = array_merge(
                     $returnArray,
@@ -86,9 +88,9 @@ class Ebizmarts_MailChimp_Model_System_Config_Source_Account
                     array('value' => 6, 'label' => $totalCarts)
                     )
                 );
-            } elseif (Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::ECOMMERCE_ACTIVE)) {
+            } elseif (Mage::getModel('mailchimp/config')->getEcommerceEnabled($scopeArray[0], $scopeArray[1])) {
                 $text = 'Warning: The MailChimp store was not created properly, please Reset Ecommerce Data and reload the page.';
-                $label = Mage::helper('mailchimp')->__($text);
+                $label = $helper->__($text);
                 $returnArray = array_merge($returnArray, array(array('value' => 7, 'label' => $label)));
             }
                 return $returnArray;

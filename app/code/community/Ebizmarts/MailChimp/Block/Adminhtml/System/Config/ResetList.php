@@ -19,11 +19,18 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_ResetList
         $this->setTemplate('ebizmarts/mailchimp/system/config/resetlist.phtml');
     }
 
+    /**
+     * @param Varien_Data_Form_Element_Abstract $element
+     * @return string
+     */
     protected function _getElementHtml(Varien_Data_Form_Element_Abstract $element)
     {
         return $this->_toHtml();
     }
 
+    /**
+     * @return mixed
+     */
     public function getButtonHtml()
     {
         $button = $this->getLayout()->createBlock('adminhtml/widget_button')
@@ -38,14 +45,26 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_ResetList
 
         return $button->toHtml();
     }
+
+    /**
+     * @return mixed
+     */
     public function getAjaxCheckUrl()
     {
         return Mage::helper('adminhtml')->getUrl('adminhtml/ecommerce/resetList');
     }
+
+    /**
+     * @return string
+     */
     public function getMessage()
     {
         return __(Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::WARNING_MESSAGE));
     }
+
+    /**
+     * @return string
+     */
     public function getPopupMessage()
     {
         return __(Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::POPUP_MESSAGE));

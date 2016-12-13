@@ -26,6 +26,9 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Fieldset_Mailchimp_Hint
         return $this->toHtml();
     }
 
+    /**
+     * @return string
+     */
     public function getMailChimpVersion()
     {
         return (string)Mage::getConfig()->getNode('modules/Ebizmarts_MailChimp/version');

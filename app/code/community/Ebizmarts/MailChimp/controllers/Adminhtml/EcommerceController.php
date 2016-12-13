@@ -12,22 +12,34 @@
  */
 class Ebizmarts_Mailchimp_Adminhtml_EcommerceController extends Mage_Adminhtml_Controller_Action
 {
+
+    /**
+     * Reset local Errors for scope in param.
+     */
     public function resetLocalErrorsAction()
     {
+        $param = Mage::app()->getRequest()->getParam('scope');
+        $scopeArray = explode('-', $param);
         $result = 1;
         try {
-            Mage::helper('mailchimp')->resetErrors();
+            Mage::helper('mailchimp')->resetErrors($scopeArray[0], $scopeArray[1]);
         } catch(Exception $e)
         {
             $result = 0;
         }
         Mage::app()->getResponse()->setBody($result);
     }
+
+    /**
+     * Reset Ecommerce Data for scope in param.
+     */
     public function resetEcommerceDataAction()
     {
+        $param = Mage::app()->getRequest()->getParam('scope');
+        $scopeArray = explode('-', $param);
         $result = 1;
         try {
-            Mage::helper('mailchimp')->resetMCEcommerceData(true);
+            Mage::helper('mailchimp')->resetMCEcommerceData(true, $scopeArray[0], $scopeArray[1]);
         }
         catch(Mailchimp_Error $e) {
             Mage::helper('mailchimp')->logError($e->getFriendlyMessage());
@@ -39,11 +51,16 @@ class Ebizmarts_Mailchimp_Adminhtml_EcommerceController extends Mage_Adminhtml_C
         Mage::app()->getResponse()->setBody($result);
     }
 
+    /**
+     * Create Merge Fields in the list selected for the scope in param.
+     */
     public function createMergeFieldsAction()
     {
+        $param = Mage::app()->getRequest()->getParam('scope');
+        $scopeArray = explode('-', $param);
         $result = 1;
         try {
-            Mage::helper('mailchimp')->createMergeFields();
+            Mage::helper('mailchimp')->createMergeFields($scopeArray[0], $scopeArray[1]);
         }
         catch(Mailchimp_Error $e) {
             Mage::helper('mailchimp')->logError($e->getFriendlyMessage());
@@ -55,6 +72,11 @@ class Ebizmarts_Mailchimp_Adminhtml_EcommerceController extends Mage_Adminhtml_C
         Mage::app()->getResponse()->setBody($result);
     }
 
+    /**
+     * Grant access to any back end user with permission to the extension.
+     * 
+     * @return mixed
+     */
     protected function _isAllowed()
     {
         switch ($this->getRequest()->getActionName()) {

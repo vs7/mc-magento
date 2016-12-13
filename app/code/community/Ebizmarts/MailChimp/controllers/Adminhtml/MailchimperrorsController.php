@@ -12,6 +12,9 @@
  */
 class Ebizmarts_Mailchimp_Adminhtml_MailchimperrorsController extends Mage_Adminhtml_Controller_Action
 {
+    /**
+     * Set title and menu option to be shown as active.
+     */
     public function indexAction()
     {
         $this->_title($this->__('Newsletter'))
@@ -21,12 +24,21 @@ class Ebizmarts_Mailchimp_Adminhtml_MailchimperrorsController extends Mage_Admin
         $this->_setActiveMenu('newsletter/mailchimp');
         $this->renderLayout();
     }
+
+    /**
+     * Prevent default layout to be loaded.
+     */
     public function gridAction()
     {
         $this->loadLayout(false);
         $this->renderLayout();
     }
 
+    /**
+     * Grant access to any back end user with permission to the extension.
+     * 
+     * @return mixed
+     */
     protected function _isAllowed()
     {
         switch ($this->getRequest()->getActionName()) {

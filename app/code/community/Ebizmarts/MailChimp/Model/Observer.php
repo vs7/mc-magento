@@ -21,8 +21,9 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function saveConfig(Varien_Event_Observer $observer)
     {
-        $generalEnabled = Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
-        $listId = Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_LIST);
+        //@Todo handle multi store
+        $generalEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
+        $listId = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_LIST);
 
         if ($generalEnabled && $listId) {
             $this->_createWebhook($listId);
@@ -38,6 +39,7 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     protected function _createWebhook($listId)
     {
+        //@Todo Handle Multi store
         $webhooksKey = Mage::helper('mailchimp')->getWebhooksKey();
         //Generating Webhooks URL
         $url = Ebizmarts_MailChimp_Model_ProcessWebhook::WEBHOOKS_PATH;
@@ -49,8 +51,8 @@ class Ebizmarts_MailChimp_Model_Observer
         if (FALSE != strstr($hookUrl, '?', true)) {
             $hookUrl = strstr($hookUrl, '?', true);
         }
-        $api = Mage::helper('mailchimp')->getApi();
-        if (Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC)) {
+        $api = Mage::helper('mailchimp')->getApi('default', 0);
+        if (Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC)) {
             $events = array(
                 'subscribe' => true,
                 'unsubscribe' => true,
@@ -112,7 +114,8 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function handleSubscriber(Varien_Event_Observer $observer)
     {
-        $isEnabled = Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
+        //@Todo handle multi store
+        $isEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
         if ($isEnabled) {
             $subscriber = $observer->getEvent()->getSubscriber();
             $subscriber->setImportMode(true);
@@ -136,7 +139,8 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function handleSubscriberDeletion(Varien_Event_Observer $observer)
     {
-        $isEnabled = Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
+        //@Todo handle multi store
+        $isEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
         if ($isEnabled) {
             $subscriber = $observer->getEvent()->getSubscriber();
             if (TRUE === $subscriber->getIsStatusChanged()) {
@@ -196,7 +200,7 @@ class Ebizmarts_MailChimp_Model_Observer
         }
 
         //update mailchimp ecommerce data for that customer
-        Mage::getModel('mailchimp/api_customers')->update($customer);
+        Mage::getModel('mailchimp/api_customers')->update($customer->getId());
         return $observer;
     }
 
@@ -216,7 +220,7 @@ class Ebizmarts_MailChimp_Model_Observer
             $product->setMailchimpUpdateObserverRan(true);
         }
         //update mailchimp ecommerce data for that product variant
-        Mage::getModel('mailchimp/api_products')->update($product);
+        Mage::getModel('mailchimp/api_products')->update($product->getId());
         return $observer;
     }
 
@@ -271,8 +275,9 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function addColumnToSalesOrderGrid($observer)
     {
+        //@Todo handle multi store
         $block = $observer->getEvent()->getBlock();
-        if ($block instanceof Mage_Adminhtml_Block_Sales_Order_Grid && (Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::ABANDONEDCART_ACTIVE) || Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE))) {
+        if ($block instanceof Mage_Adminhtml_Block_Sales_Order_Grid && (Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::ABANDONEDCART_ACTIVE) || Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE))) {
             $block->addColumnAfter(
                 'mailchimp_flag', array(
                 'header' => Mage::helper('mailchimp')->__('MailChimp'),
@@ -286,30 +291,6 @@ class Ebizmarts_MailChimp_Model_Observer
             );
         }
         return $observer;
-    }
-
-    /**
-     * Create MailChimp store.
-     */
-    protected function _createMailChimpStore()
-    {
-        try {
-            $mailchimpStore = Mage::getModel('mailchimp/api_stores')->getMailChimpStore();
-            if (!$mailchimpStore) {
-                Mage::helper('mailchimp')->resetMCEcommerceData();
-            }
-            if (!Mage::helper('mailchimp')->getMCStoreId()) {
-                $warningMessage = 'The MailChimp store was not created properly, please save your configuration to create it.';
-                Mage::getSingleton('adminhtml/session')->addWarning($warningMessage);
-            }
-
-        } catch (Mailchimp_Error $e) {
-            Mage::helper('mailchimp')->logError($e->getFriendlyMessage());
-            Mage::getSingleton('adminhtml/session')->addError($e->getFriendlyMessage());
-
-        } catch (Exception $e) {
-            Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
-        }
     }
 
 

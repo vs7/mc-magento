@@ -23,15 +23,20 @@ class Ebizmarts_Mailchimp_Block_Adminhtml_Mailchimperrors_Grid extends Mage_Admi
         $this->setSaveParametersInSession(true);
     }
 
+    /**
+     * @return Mage_Adminhtml_Block_Widget_Grid
+     */
     protected function _prepareCollection()
     {
-
-
         $collection = Mage::getModel('mailchimp/mailchimperrors')->getCollection();
         $this->setCollection($collection);
         return parent::_prepareCollection();
     }
 
+    /**
+     * @return $this
+     * @throws Exception
+     */
     protected function _prepareColumns()
     {
 
@@ -94,10 +99,18 @@ class Ebizmarts_Mailchimp_Block_Adminhtml_Mailchimperrors_Grid extends Mage_Admi
         return parent::_prepareColumns();
     }
 
+    /**
+     * @param $row
+     * @return bool
+     */
     public function getRowUrl($row)
     {
         return false;
     }
+
+    /**
+     * @return string
+     */
     public function getGridUrl()
     {
         return $this->getUrl('*/*/grid', array('_current' => true));

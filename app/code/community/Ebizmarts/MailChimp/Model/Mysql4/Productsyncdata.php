@@ -7,20 +7,19 @@
  * @author Ebizmarts Team <info@ebizmarts.com>
  * @copyright Ebizmarts (http://ebizmarts.com)
  * @license     http://opensource.org/licenses/osl-3.0.php  Open Software License (OSL 3.0)
- * @date: 5/16/16 6:23 PM
- * @file: MailchimpSychBatches.php
+ * @date: 5/16/16 6:37 PM
+ * @file: SychBatches.php
  */
-
-class Ebizmarts_Mailchimp_Model_Synchbatches extends Mage_Core_Model_Abstract
+class Ebizmarts_Mailchimp_Model_Mysql4_Productsyncdata extends Mage_Core_Model_Mysql4_Abstract
 {
+
     /**
-     * Initialize model
+     * Initialize
      *
      * @return void
      */
     public function _construct()
     {
-        parent::_construct();
-        $this->_init('mailchimp/synchbatches');
+        $this->_init('mailchimp/productsyncdata', 'id');
     }
 }

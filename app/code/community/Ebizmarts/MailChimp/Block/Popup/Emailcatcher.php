@@ -12,35 +12,53 @@
 class Ebizmarts_MailChimp_Block_Popup_Emailcatcher extends Mage_Core_Block_Template
 {
 
+    /**
+     * @return bool
+     */
     protected function _canCancel()
     {
         $storeId = Mage::app()->getStore()->getId();
         return Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::ENABLE_POPUP, $storeId) && Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::POPUP_CAN_CANCEL, $storeId);
     }
 
+    /**
+     * @return mixed
+     */
     protected function _popupHeading()
     {
         $storeId = Mage::app()->getStore()->getId();
         return Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::POPUP_HEADING, $storeId);
     }
 
+    /**
+     * @return mixed
+     */
     protected function _popupMessage()
     {
         $storeId = Mage::app()->getStore()->getId();
         return Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::POPUP_TEXT, $storeId);
     }
 
+    /**
+     * @return mixed
+     */
     protected function _modalSubscribe()
     {
         $storeId = Mage::app()->getStore()->getId();
         return Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::POPUP_SUBSCRIPTION, $storeId);
     }
 
+    /**
+     * @return int
+     */
     protected function _getStoreId()
     {
         return Mage::app()->getStore()->getId();
     }
 
+    /**
+     * @return string
+     */
     protected function _handleCookie()
     {
         $storeId = Mage::app()->getStore()->getId();

@@ -26,6 +26,9 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Fieldset_Mandrill_Hint
         return $this->toHtml();
     }
 
+    /**
+     * @return string
+     */
     public function getMandrillVersion()
     {
         return (string)Mage::getConfig()->getNode('modules/Ebizmarts_Mandrill/version');

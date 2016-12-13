@@ -15,29 +15,37 @@ class Ebizmarts_MailChimp_Model_Api_Customers
 
     const BATCH_LIMIT = 100;
 
-    public function createBatchJson($mailchimpStoreId)
+    public function createBatchJson($scope, $scopeId, $mailchimpStoreId)
     {
-        //get customers
-        $collection = Mage::getModel('customer/customer')->getCollection()
-            ->addAttributeToSelect('id')
-            ->addAttributeToFilter(
-                array(
-                array('attribute' => 'mailchimp_sync_delta', 'null' => true),
-                array('attribute' => 'mailchimp_sync_delta', 'eq' => ''),
-                array('attribute' => 'mailchimp_sync_delta', 'lt' => Mage::helper('mailchimp')->getMCMinSyncDateFlag()),
-                array('attribute' => 'mailchimp_sync_modified', 'eq'=> 1)
-                ), '', 'left'
-            );
-        $collection->getSelect()->limit(self::BATCH_LIMIT);
-
+        Mage::log(__METHOD__, null, 'ebizmarts.log', true);
         $customerArray = array();
         
-        $batchId = Ebizmarts_MailChimp_Model_Config::IS_CUSTOMER . '_' . Mage::helper('mailchimp')->getDateMicrotime();
+        //get customers
+        $customerTable = Mage::getSingleton('core/resource')->getTableName('customer_entity');
+        $collection = Mage::getModel('mailchimp/customersyncdata')->getCollection()
+          ->addFieldToFilter(
+                array(
+                    'mailchimp_sync_delta',
+                    'mailchimp_sync_modified',
+                ),
+                array(
+                    array('lt' => Mage::getModel('mailchimp/config')->getMCMinSyncDateFlag($scope, $scopeId)),
+                    array('eq' => 1)
+                )
+            )
+        ->addFieldToFilter('scope', array('eq' => $scope.'_'.$scopeId));
 
+        $joinCondition = 'c.entity_id = item_id';
+
+        $collection->getSelect()
+            ->join(array('c' => $customerTable), $joinCondition, array('c.entity_id'))
+            ->limit(self::BATCH_LIMIT);
+        $batchId = Ebizmarts_MailChimp_Model_Config::IS_CUSTOMER . '_' . Mage::helper('mailchimp')->getDateMicrotime();
         $counter = 0;
+        Mage::log('count '.count($collection), null, 'ebizmarts.log', true);
         foreach ($collection as $item) {
-            $customer = Mage::getModel('customer/customer')->load($item->getId());
-            $data = $this->_buildCustomerData($customer);
+            $customer = Mage::getModel('customer/customer')->load($item->getItemId());
+            $data = $this->_buildCustomerData($customer, $scope, $scopeId);
             $customerJson = "";
 
             //enconde to JSON
@@ -45,7 +53,7 @@ class Ebizmarts_MailChimp_Model_Api_Customers
                 $customerJson = json_encode($data);
             } catch (Exception $e) {
                 //json encode failed
-                Mage::helper('mailchimp')->logError("Customer ".$customer->getId()." json encode failed");
+                Mage::helper('mailchimp')->logError("Customer " . $customer->getId() . " json encode failed");
             }
 
             if (!empty($customerJson)) {
@@ -55,25 +63,25 @@ class Ebizmarts_MailChimp_Model_Api_Customers
                 $customerArray[$counter]['body'] = $customerJson;
 
                 //update customers delta
-                $customer->setData("mailchimp_sync_delta", Varien_Date::now());
-                $customer->setData("mailchimp_sync_error", "");
-                $customer->setData("mailchimp_sync_modified", 0);
-                $customer->setMailchimpUpdateObserverRan(true);
-                $customer->save();
+                $syncData = Mage::getModel('mailchimp/customersyncdata')->load($item->getId());
+                $syncData->setData("mailchimp_sync_delta", Varien_Date::now())
+                    ->setData("mailchimp_sync_error", "")
+                    ->setData("mailchimp_sync_modified", 0)
+                    ->save();
             }
             $counter++;
         }
         return $customerArray;
     }
 
-    protected function _buildCustomerData($customer)
+    protected function _buildCustomerData($customer, $scope, $scopeId)
     {
         $data = array();
         $data["id"] = $customer->getId();
         $data["email_address"] = $customer->getEmail();
         $data["first_name"] = $customer->getFirstname();
         $data["last_name"] = $customer->getLastname();
-        $data["opt_in_status"] = $this->getOptin();
+        $data["opt_in_status"] = $this->getOptin($scope, $scopeId);
 
         //customer orders data
         $orderCollection = Mage::getModel('sales/order')->getCollection()
@@ -118,19 +126,23 @@ class Ebizmarts_MailChimp_Model_Api_Customers
 
         return $data;
     }
-    public function update($customer)
+    public function update($customerId)
     {
-        if (Mage::helper('mailchimp')->isEcomSyncDataEnabled()) {
-//        $customer->setData("mailchimp_sync_delta", Varien_Date::now());
-            $customer->setData("mailchimp_sync_error", "");
-            $customer->setData("mailchimp_sync_modified", 1);
+        $collection = Mage::getModel('mailchimp/customersyncdata')->getCollection()
+            ->addFieldToFilter('item_id', array($customerId));
+        foreach ($collection as $item) {
+            $item->setData("mailchimp_sync_delta", Varien_Date::now())
+                ->setData("mailchimp_sync_error", "")
+                ->setData("mailchimp_sync_modified", 1)
+                ->save();
         }
     }
 
+    //@Todo handle multi store
     public function getMergeVars($object)
     {
         $storeId = $object->getStoreId();
-        $maps = unserialize(Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_MAP_FIELDS, $storeId));
+        $maps = unserialize(Mage::getModel('mailchimp/config')->getMapFields('stores', $storeId));
         $websiteId = Mage::getModel('core/store')->load($storeId)->getWebsiteId();
         $attrSetId = Mage::getResourceModel('eav/entity_attribute_collection')
             ->setEntityTypeFilter(1)
@@ -322,8 +334,8 @@ class Ebizmarts_MailChimp_Model_Api_Customers
         return $guestCustomer;
     }
 
-    public function getOptin() {
-        if (Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::ECOMMERCE_CUSTOMERS_OPTIN, 0)) {
+    public function getOptin($scope, $scopeId) {
+        if (Mage::getModel('mailchimp/config')->getCustomerOptIn($scope,  $scopeId)) {
             $optin = true;
         } else {
             $optin = false;

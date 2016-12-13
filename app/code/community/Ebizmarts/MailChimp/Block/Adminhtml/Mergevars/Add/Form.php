@@ -8,6 +8,9 @@
  */
 class Ebizmarts_Mailchimp_Block_Adminhtml_Mergevars_Add_Form extends Mage_Adminhtml_Block_Widget_Form
 {
+    /**
+     * @return Mage_Adminhtml_Block_Widget_Form
+     */
     protected function _prepareForm() {
         $form = new Varien_Data_Form(array('id' => 'edit_form', 'action' => $this->getUrl('*/*/saveadd'), 'method' => 'post'));
         $fieldset = $form->addFieldset('base_fieldset', array('legend' => Mage::helper('mailchimp')->__('Mergevars Data')));

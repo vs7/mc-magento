@@ -15,6 +15,12 @@ require_once Mage::getModuleDir('controllers', 'Mage_Checkout') . DS . 'CartCont
 
 class Ebizmarts_MailChimp_CartController  extends Mage_Checkout_CartController
 {
+
+    /**
+     * Load quote based on token in param.
+     * 
+     * @throws Exception
+     */
     public function loadquoteAction()
     {
         $params = $this->getRequest()->getParams();

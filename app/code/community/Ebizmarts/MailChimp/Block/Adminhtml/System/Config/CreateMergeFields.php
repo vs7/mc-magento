@@ -19,11 +19,18 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_CreateMergeFields
         $this->setTemplate('ebizmarts/mailchimp/system/config/createmergefields.phtml');
     }
 
+    /**
+     * @param Varien_Data_Form_Element_Abstract $element
+     * @return string
+     */
     protected function _getElementHtml(Varien_Data_Form_Element_Abstract $element)
     {
         return $this->_toHtml();
     }
 
+    /**
+     * @return mixed
+     */
     public function getButtonHtml()
     {
         $button = $this->getLayout()->createBlock('adminhtml/widget_button')
@@ -37,9 +44,14 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_CreateMergeFields
 
         return $button->toHtml();
     }
+
+    /**
+     * @return mixed
+     */
     public function getAjaxCheckUrl()
     {
-        return Mage::helper('adminhtml')->getUrl('adminhtml/ecommerce/createMergeFields');
+        $scopeString = Mage::helper('mailchimp')->getScopeString();
+        return Mage::helper('adminhtml')->getUrl('adminhtml/ecommerce/createMergeFields', array('scope' => $scopeString));
     }
 
 }

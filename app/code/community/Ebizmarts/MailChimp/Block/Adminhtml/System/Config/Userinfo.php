@@ -12,6 +12,10 @@ class Ebizmarts_MailChimp_Block_Adminhtml_System_Config_Userinfo
     extends Mage_Adminhtml_Block_System_Config_Form_Field
 {
 
+    /**
+     * @param Varien_Data_Form_Element_Abstract $element
+     * @return string
+     */
     protected function _getElementHtml(Varien_Data_Form_Element_Abstract $element)
     {
         $values = $element->getValues();
