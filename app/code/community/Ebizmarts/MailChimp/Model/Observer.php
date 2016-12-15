@@ -43,16 +43,25 @@ class Ebizmarts_MailChimp_Model_Observer
         $webhooksKey = Mage::helper('mailchimp')->getWebhooksKey();
         //Generating Webhooks URL
         $url = Ebizmarts_MailChimp_Model_ProcessWebhook::WEBHOOKS_PATH;
-        $hookUrl = Mage::getModel('core/url')->getUrl(
-            $url, array(
-            'wkey' => $webhooksKey
-        ));
+        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
+        if (Mage::getModel('mailchimp/config')->getConfigValueForScope('web/secure/use_in_frontend', $scopeArray[0], $scopeArray[1])) {
+            $hookUrl = Mage::getModel('core/url')->getUrl(
+                $url, array(
+                '_secure' => true,
+                'wkey' => $webhooksKey
+            ));
+        } else {
+            $hookUrl = Mage::getModel('core/url')->getUrl(
+                $url, array(
+                'wkey' => $webhooksKey
+            ));
+        }
 
         if (FALSE != strstr($hookUrl, '?', true)) {
             $hookUrl = strstr($hookUrl, '?', true);
         }
-        $api = Mage::helper('mailchimp')->getApi('default', 0);
-        if (Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC)) {
+        $api = Mage::helper('mailchimp')->getApi($scopeArray[0], $scopeArray[1]);
+        if (Mage::getModel('mailchimp/config')->getTwoWaySync($scopeArray[0], $scopeArray[1])) {
             $events = array(
                 'subscribe' => true,
                 'unsubscribe' => true,
@@ -114,10 +123,11 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function handleSubscriber(Varien_Event_Observer $observer)
     {
-        //@Todo handle multi store
-        $isEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
+        $subscriber = $observer->getEvent()->getSubscriber();
+        //@Todo handle multi store Test
+        $storeId = $subscriber->getStoreId();
+        $isEnabled = Mage::getModel('mailchimp/config')->getMailChimpEnabled('stores', $storeId);
         if ($isEnabled) {
-            $subscriber = $observer->getEvent()->getSubscriber();
             $subscriber->setImportMode(true);
             if (!Mage::getSingleton('customer/session')->isLoggedIn() && !Mage::app()->getStore()->isAdmin()) {
                 Mage::getModel('core/cookie')->set(
@@ -139,10 +149,11 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function handleSubscriberDeletion(Varien_Event_Observer $observer)
     {
-        //@Todo handle multi store
-        $isEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
+        $subscriber = $observer->getEvent()->getSubscriber();
+        $storeId = $subscriber->getStoreId();
+        //@Todo handle multi store Test
+        $isEnabled = Mage::getModel('mailchimp/config')->getMailChimpEnabled('stores', $storeId);
         if ($isEnabled) {
-            $subscriber = $observer->getEvent()->getSubscriber();
             if (TRUE === $subscriber->getIsStatusChanged()) {
                 Mage::getModel('mailchimp/api_subscribers')->deleteSubscriber($subscriber);
             }
@@ -193,12 +204,6 @@ class Ebizmarts_MailChimp_Model_Observer
     {
         $customer = $observer->getEvent()->getCustomer();
 
-        if ($customer->getMailchimpUpdateObserverRan()) {
-            return $observer;
-        } else {
-            $customer->setMailchimpUpdateObserverRan(true);
-        }
-
         //update mailchimp ecommerce data for that customer
         Mage::getModel('mailchimp/api_customers')->update($customer->getId());
         return $observer;
@@ -213,12 +218,7 @@ class Ebizmarts_MailChimp_Model_Observer
     public function productSaveBefore(Varien_Event_Observer $observer)
     {
         $product = $observer->getEvent()->getProduct();
-
-        if ($product->getMailchimpUpdateObserverRan()) {
-            return $observer;
-        } else {
-            $product->setMailchimpUpdateObserverRan(true);
-        }
+        
         //update mailchimp ecommerce data for that product variant
         Mage::getModel('mailchimp/api_products')->update($product->getId());
         return $observer;
@@ -275,9 +275,10 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function addColumnToSalesOrderGrid($observer)
     {
-        //@Todo handle multi store
+        //@Todo handle multi store Test
+        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
         $block = $observer->getEvent()->getBlock();
-        if ($block instanceof Mage_Adminhtml_Block_Sales_Order_Grid && (Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::ABANDONEDCART_ACTIVE) || Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE))) {
+        if ($block instanceof Mage_Adminhtml_Block_Sales_Order_Grid && (Mage::getModel('mailchimp/config')->getAbandonedCartEnabled($scopeArray[0], $scopeArray[1]) || Mage::getModel('mailchimp/config')->getMailChimpEnabled($scopeArray[0], $scopeArray[1]))) {
             $block->addColumnAfter(
                 'mailchimp_flag', array(
                 'header' => Mage::helper('mailchimp')->__('MailChimp'),
@@ -304,7 +305,7 @@ class Ebizmarts_MailChimp_Model_Observer
     {
         $quote = $observer->getEvent()->getQuote();
         if (!Mage::getSingleton('customer/session')->isLoggedIn() &&
-            Mage::getStoreConfig(Ebizmarts_MailChimp_Model_Config::ENABLE_POPUP, $quote->getStoreId())
+            Mage::getModel('mailchimp/config')->getPopupEnabled('stores', $quote->getStoreId())
         ) {
             $action = Mage::app()->getRequest()->getActionName();
             $onCheckout = ($action == 'saveOrder' || $action == 'savePayment' ||
@@ -347,10 +348,17 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
-            $product = Mage::getModel('catalog/product')->load($item->getProductId());
-            $product->setData('mailchimp_sync_modified', 1);
-            $product->setMailchimpUpdateObserverRan(true);
-            $product->save();
+
+            $productSyncDataCollection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
+                ->addFieldToFilter('item_id', array('eq' => $item->getProductId()));
+            foreach ($productSyncDataCollection as $productSyncData) {
+                $productSyncData->setData('mailchimp_sync_modified', 1)
+                    ->save();
+            }
+//            $product = Mage::getModel('catalog/product')->load($item->getProductId());
+//            $product->setData('mailchimp_sync_modified', 1);
+//            $product->setMailchimpUpdateObserverRan(true);
+//            $product->save();
         }
         return $observer;
     }
@@ -371,10 +379,17 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
-            $product = Mage::getModel('catalog/product')->load($item->getProductId());
-            $product->setData('mailchimp_sync_modified', 1);
-            $product->setMailchimpUpdateObserverRan(true);
-            $product->save();
+
+            $productSyncDataCollection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
+                ->addFieldToFilter('item_id', array('eq' => $item->getProductId()));
+            foreach ($productSyncDataCollection as $productSyncData) {
+                $productSyncData->setData('mailchimp_sync_modified', 1)
+                    ->save();
+            }
+//            $product = Mage::getModel('catalog/product')->load($item->getProductId());
+//            $product->setData('mailchimp_sync_modified', 1);
+//            $product->setMailchimpUpdateObserverRan(true);
+//            $product->save();
         }
         return $observer;
     }
@@ -395,10 +410,17 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
-            $product = Mage::getModel('catalog/product')->load($item->getProductId());
-            $product->setData('mailchimp_sync_modified', 1);
-            $product->setMailchimpUpdateObserverRan(true);
-            $product->save();
+
+            $productSyncDataCollection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
+                ->addFieldToFilter('item_id', array('eq' => $item->getProductId()));
+            foreach ($productSyncDataCollection as $productSyncData) {
+                $productSyncData->setData('mailchimp_sync_modified', 1)
+                    ->save();
+            }
+//            $product = Mage::getModel('catalog/product')->load($item->getProductId());
+//            $product->setData('mailchimp_sync_modified', 1);
+//            $product->setMailchimpUpdateObserverRan(true);
+//            $product->save();
         }
         return $observer;
     }
@@ -414,10 +436,16 @@ class Ebizmarts_MailChimp_Model_Observer
     {
         $item = $observer->getEvent()->getItem();
         if ($item->getProductType()!='bundle' && $item->getProductType()!='configurable') {
-            $product = Mage::getModel('catalog/product')->load($item->getProductId());
-            $product->setData('mailchimp_sync_modified', 1);
-            $product->setMailchimpUpdateObserverRan(true);
-            $product->save();
+            $productSyncDataCollection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
+                ->addFieldToFilter('item_id', array('eq' => $item->getProductId()));
+            foreach ($productSyncDataCollection as $productSyncData) {
+                $productSyncData->setData('mailchimp_sync_modified', 1)
+                    ->save();
+            }
+//            $product = Mage::getModel('catalog/product')->load($item->getProductId());
+//            $product->setData('mailchimp_sync_modified', 1);
+//            $product->setMailchimpUpdateObserverRan(true);
+//            $product->save();
         }
         return $observer;
     }

@@ -73,7 +73,6 @@ class Ebizmarts_MailChimp_Model_Api_Batches
      */
     public function _sendEcommerceBatch($scope, $scopeId, $mailchimpStoreId)
     {
-        Mage::log(__METHOD__, null, 'process.log', true);
         try {
             if (Mage::getModel('mailchimp/config')->getMailChimpEnabled($scope, $scopeId) && Mage::getModel('mailchimp/config')->isEcomSyncDataEnabled($scope, $scopeId)) {
 
@@ -82,23 +81,18 @@ class Ebizmarts_MailChimp_Model_Api_Batches
                 //customer operations
                 $customersArray = Mage::getModel('mailchimp/api_customers')->createBatchJson($scope, $scopeId, $mailchimpStoreId);
                 $batchArray['operations'] = $customersArray;
-                Mage::log('after customers', null, 'process.log', true);
                 //product operations
                 $productsArray = Mage::getModel('mailchimp/api_products')->createBatchJson($scope, $scopeId, $mailchimpStoreId);
                 $batchArray['operations'] = array_merge($batchArray['operations'], $productsArray);
-                Mage::log('after products', null, 'process.log', true);
                 //cart operations
                 $cartsArray = Mage::getModel('mailchimp/api_carts')->createBatchJson($scope, $scopeId, $mailchimpStoreId);
                 $batchArray['operations'] = array_merge($batchArray['operations'], $cartsArray);
-                Mage::log('after carts', null, 'process.log', true);
                 //order operations
                 $ordersArray = Mage::getModel('mailchimp/api_orders')->createBatchJson($scope, $scopeId, $mailchimpStoreId);
                 $batchArray['operations'] = array_merge($batchArray['operations'], $ordersArray);
-                Mage::log('after orders', null, 'process.log', true);
                 if (empty($ordersArray)) {
                     $ordersCanceledArray = Mage::getModel('mailchimp/api_orders')->createCanceledBatchJson($scope, $scopeId, $mailchimpStoreId);
                     $batchArray['operations'] = array_merge($batchArray['operations'], $ordersCanceledArray);
-                Mage::log('after canceled orders', null, 'process.log', true);
                 }
                 try {
                     $mailchimpApi = Mage::getModel('mailchimp/config')->getApi($scope, $scopeId);

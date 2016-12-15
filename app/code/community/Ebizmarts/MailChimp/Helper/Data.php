@@ -19,7 +19,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
      * @param null $websiteId
      * @return array
      */
-    protected function _getConfigScopeId($storeId = null, $websiteId = null)
+    public function getConfigScopeId($storeId = null, $websiteId = null)
     {
         $scopeArray = array();
         if ($code = Mage::getSingleton('adminhtml/config_data')->getStore()) {
@@ -41,7 +41,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
      * @return string
      */
     public function getScopeString() {
-        $scopeArray = $this->_getConfigScopeId();
+        $scopeArray = $this->getConfigScopeId();
         if (isset($scopeArray['websiteId'])) {
             $scopeString = 'websites-'.$scopeArray['websiteId'];
         } elseif (isset($scopeArray['storeId'])) {
@@ -96,47 +96,6 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             $filterArray[] = array('eq' => $store->getId());
         }
         return $collection->addFieldToFilter('store_id', $filterArray);
-    }
-
-    /**
-     *  Get configuration value from back end and front end unless storeId is sent, in this last case it gets the configuration from the store Id sent
-     *
-     * @param $path
-     * @param null $storeId If this is null it gets the config for the current store (works for back end and front end)
-     * @param bool $returnParentValueIfNull
-     * @return mixed|null
-     * @throws Mage_Core_Exception
-     */
-    public function getConfigValue($path, $storeId = null, $returnParentValueIfNull = false)
-    {
-        $scopeArray = array();
-        $configValue = null;
-
-        //Get store scope for back end or front end
-        if (!$storeId) {
-            $scopeArray = $this->_getConfigScopeId();
-        } else {
-            $scopeArray['storeId'] = $storeId;
-        }
-        if (!$returnParentValueIfNull) {
-            if (isset($scopeArray['websiteId']) && $scopeArray['websiteId']) {
-                //Website scope
-                if (Mage::app()->getWebsite($scopeArray['websiteId'])->getConfig($path) !== null) {
-                    $configValue = Mage::app()->getWebsite($scopeArray['websiteId'])->getConfig($path);
-                }
-            } elseif (isset($scopeArray['storeId']) && $scopeArray['storeId']) {
-                //Store view scope
-                if (Mage::getStoreConfig($path, $scopeArray['storeId']) !== null) {
-                    $configValue = Mage::getStoreConfig($path, $scopeArray['storeId']);
-                }
-            } else {
-                //Default config scope
-                if (Mage::getStoreConfig($path) !== null) {
-                    $configValue = Mage::getStoreConfig($path);
-                }
-            }
-        }
-        return $configValue;
     }
 
     /**
@@ -255,12 +214,10 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function resetErrors($scope, $scopeId)
     {
-        Mage::log(__METHOD__, null, 'reset.log', true);
         // reset products with errors
         $collection = Mage::getModel('mailchimp/productsyncdata')->getCollection()
             ->addFieldToFilter('mailchimp_sync_error', array('notnull' => true))
             ->addFieldToFilter('scope', array('eq' => $scope . '_' . $scopeId));
-        Mage::log('count '.count($collection), null, 'reset.log', true);
         foreach ($collection as $productSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_PRODUCT))
@@ -268,7 +225,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
-            $productSyncData->setData("mailchimp_sync_delta", null);
+            $productSyncData->setData("mailchimp_sync_delta", '0000-00-00 00:00:00');
             $productSyncData->setData("mailchimp_sync_error", '');
             $productSyncData->save();
         }
@@ -299,7 +256,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
-            $customerSyncData->setData("mailchimp_sync_delta", null);
+            $customerSyncData->setData("mailchimp_sync_delta", '0000-00-00 00:00:00');
             $customerSyncData->setData("mailchimp_sync_error", '');
             $customerSyncData->save();
         }
@@ -315,7 +272,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
-            $orderSyncData->setData("mailchimp_sync_delta", null);
+            $orderSyncData->setData("mailchimp_sync_delta", '0000-00-00 00:00:00');
             $orderSyncData->setData("mailchimp_sync_error", '');
             $orderSyncData->save();
         }
@@ -331,7 +288,7 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
-            $quoteSyncData->setData("mailchimp_sync_delta", null);
+            $quoteSyncData->setData("mailchimp_sync_delta", '0000-00-00 00:00:00');
             $quoteSyncData->setData("mailchimp_sync_error", '');
             $quoteSyncData->save();
         }
@@ -499,5 +456,75 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
             $api = new Ebizmarts_Mailchimp($apiKey, null, 'Mailchimp4Magento' . (string)Mage::getConfig()->getNode('modules/Ebizmarts_MailChimp/version'));
         }
         return $api;
+    }
+
+    /**
+     * Get Store Id by list Id.
+     * If list id found on multiple scopes
+     * Priority - First: Default List saved on particular store view.
+     *            Second: List saved on particular website.
+     *
+     * @return int|mixed|null
+     * @throws Mage_Core_Exception
+     */
+    public function getStoreByListId()
+    {
+        $storeId = null;
+        $defaultStoreId = Mage::app()
+            ->getWebsite(true)
+            ->getDefaultGroup()
+            ->getDefaultStoreId();
+        $defaultWebsiteId = Mage::app()
+            ->getWebsite(true)
+            ->getId();
+
+        $listCollectionWithoutScope = Mage::getModel('core/config_data')->getCollection()
+            ->addFieldToFilter('path', array('eq' => Ebizmarts_MailChimp_Model_Config::GENERAL_LIST));
+        $listCollectionByStores = $listCollectionWithoutScope
+            ->addFieldToFilter('scope', array('eq' => 'stores'));
+        if (count($listCollectionByStores) > 1) {
+            foreach ($listCollectionByStores as $list) {
+                if ($list->getScopeId() == $defaultStoreId) {
+                    $storeId = $defaultStoreId;
+                }
+            }
+        } elseif (count($listCollectionByStores) == 1) {
+            $storeId = $listCollectionByStores->getFirstItem()->getScopeId();
+        } else {
+            $listCollectionByWebsites = $listCollectionWithoutScope
+                ->addFieldToFilter('scope', array('eq' => 'websites'));
+            if (count($listCollectionByWebsites) > 1) {
+                foreach ($listCollectionByWebsites as $list) {
+                    if ($list->scopeId() == $defaultWebsiteId) {
+                        $storeId = Mage::app()
+                            ->getWebsite($defaultWebsiteId)
+                            ->getDefaultStore()
+                            ->getId();
+                    }
+                }
+                if (!$storeId) {
+                    $websiteId = $listCollectionByWebsites->getFirstItem()->getScopeId();
+                    $storeId = Mage::app()
+                        ->getWebsite($websiteId)
+                        ->getDefaultStore()
+                        ->getId();
+                }
+            } elseif (count($listCollectionByWebsites) == 1) {
+                $websiteId = $listCollectionByWebsites->getFirstItem()->getScopeId();
+                $storeId = Mage::app()
+                    ->getWebsite($websiteId)
+                    ->getDefaultStore()
+                    ->getId();
+            } else {
+                if (count($listCollectionWithoutScope)) {
+                    $storeId = Mage::app()
+                        ->getWebsite(true)
+                        ->getDefaultGroup()
+                        ->getDefaultStoreId();
+                }
+            }
+        }
+
+        return $storeId;
     }
 }

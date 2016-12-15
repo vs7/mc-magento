@@ -55,8 +55,10 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
         $old = $data['data']['old_email'];
         $new = $data['data']['new_email'];
 
-        $oldSubscriber = $this->loadByEmail($old);
-        $newSubscriber = $this->loadByEmail($new);
+        $oldSubscriber = Mage::getModel('newsletter/subscriber')
+            ->loadByEmail($old);
+        $newSubscriber = Mage::getModel('newsletter/subscriber')
+            ->loadByEmail($new);
 
         if (!$newSubscriber->getId() && $oldSubscriber->getId()) {
             $oldSubscriber->setSubscriberEmail($new)
@@ -78,7 +80,8 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
     protected function _clean(array $data)
     {
         //Delete subscriber from Magento
-        $s = $this->loadByEmail($data['data']['email']);
+        $s = Mage::getModel('newsletter/subscriber')
+            ->loadByEmail($data['data']['email']);
 
         if ($s->getId()) {
             try {
@@ -105,7 +108,10 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
                 $subscriber->setStatus(Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED)
                     ->save();
             } else {
-                $subscriber = Mage::getModel('newsletter/subscriber')->setImportMode(TRUE);
+                $storeId = Mage::helper('mailchimp')->loadStoreByListId($data['data']['list_id']);
+                $subscriber = Mage::getModel('newsletter/subscriber')
+                    ->setStoreId($storeId)
+                    ->setImportMode(TRUE);
                 if (isset($data['data']['fname'])) {
                     $subscriberFname = filter_var($data['data']['fname'], FILTER_SANITIZE_STRING);
                     $subscriber->setSubscriberFirstname($subscriberFname);
@@ -119,6 +125,7 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
             }
         } catch (Exception $e) {
             Mage::logException($e);
+            Mage::helper('mailchimp')->logError('Webhook subscribe processing error: '. $e->getMessage());
         }
     }
 
@@ -130,18 +137,13 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
      */
     protected function _unsubscribe(array $data)
     {
-        $subscriber = $this->loadByEmail($data['data']['email']);
-
-        if (!$subscriber->getId()) {
+        try {
             $subscriber = Mage::getModel('newsletter/subscriber')
                 ->loadByEmail($data['data']['email']);
-        }
 
-        if ($subscriber->getId()) {
-            try {
-
+            if ($subscriber->getId()) {
                 switch ($data['data']['action']) {
-                    case 'delete' :
+                    case 'delete':
                         //if config setting "Webhooks Delete action" is set as "Delete customer account"
                         if (Mage::getStoreConfig("mailchimp/general/webhook_delete") == 1) {
                             $subscriber->delete();
@@ -153,56 +155,28 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
                         $subscriber->setImportMode(TRUE)->unsubscribe();
                         break;
                 }
-            } catch (Exception $e) {
-                Mage::logException($e);
             }
+        } catch (Exception $e) {
+            Mage::logException($e);
+            Mage::helper('mailchimp')->logError('Webhook unsubscribe processing error: '. $e->getMessage());
         }
     }
 
     protected function _profile(array $data)
     {
         $email = $data['data']['email'];
-        $subscriber = $this->loadByEmail($email);
+        $subscriber = Mage::getModel('newsletter/subscriber')
+            ->loadByEmail($data['data']['email']);
 
         $customerCollection = Mage::getModel('customer/customer')->getCollection()
             ->addFieldToFilter('email', array('eq' => $email));
         if (count($customerCollection) > 0) {
-            $toUpdate = $customerCollection->getFirstItem();
+            $customer = $customerCollection->getFirstItem();
+            Mage::getModel('mailchimp/api_customer')->setMergeVars($customer, $data['data']['merges']);
         } else {
-            $toUpdate = $subscriber;
+            $subscriber->setSubscriberFirstname($data['data']['merges']['FNAME'])
+                ->setSubscriberLastname($data['data']['merges']['LNAME'])
+                ->save();
         }
-        $toUpdate->setFirstname($data['data']['merges']['FNAME']);
-        $toUpdate->setLastname($data['data']['merges']['LNAME']);
-        $toUpdate->save();
-
-
     }
-
-    /**
-     * Return Inbox model instance
-     *
-     * @return Mage_AdminNotification_Model_Inbox
-     */
-    protected function _getInbox()
-    {
-        return Mage::getModel('adminnotification/inbox')
-            ->setSeverity(4)//Notice
-            ->setDateAdded(Mage::getModel('core/date')->gmtDate());
-    }
-
-    /**
-     * Load newsletter_subscriber by email
-     *
-     * @param string $email
-     * @return Mage_Newsletter_Model_Subscriber
-     */
-    public function loadByEmail($email)
-    {
-        return Mage::getModel('newsletter/subscriber')
-            ->getCollection()
-            ->addFieldToFilter('subscriber_email', $email)
-            ->addFieldToFilter('store_id', Mage::app()->getStore()->getId())
-            ->getFirstItem();
-    }
-
 }

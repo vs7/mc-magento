@@ -25,7 +25,6 @@ class Ebizmarts_MailChimp_Model_Api_Carts
      */
     public function createBatchJson($scope, $scopeId, $mailchimpStoreId)
     {
-        Mage::log(__METHOD__, null, 'cartprocess.log', true);
         $allCarts = array();
         if (!Mage::getModel('mailchimp/config')->getAbandonedCartEnabled($scope, $scopeId)) {
             return $allCarts;
@@ -36,13 +35,10 @@ class Ebizmarts_MailChimp_Model_Api_Carts
         $date = Mage::helper('mailchimp')->getDateMicrotime();
         $this->_batchId = Ebizmarts_MailChimp_Model_Config::IS_QUOTE . '_' . $date;
         // get all the carts converted in orders (must be deleted on mailchimp)
-        Mage::log('before converted carts', null, 'cartprocess.log', true);
         $allCarts = array_merge($allCarts, $this->_getConvertedQuotes($scope, $scopeId, $mailchimpStoreId));
         // get all the carts modified but not converted in orders
-        Mage::log('before modified carts', null, 'cartprocess.log', true);
         $allCarts = array_merge($allCarts, $this->_getModifiedQuotes($scope, $scopeId, $mailchimpStoreId));
         // get new carts
-        Mage::log('before new carts', null, 'cartprocess.log', true);
         $allCarts = array_merge($allCarts, $this->_getNewQuotes($scope, $scopeId, $mailchimpStoreId));
         return $allCarts;
     }
@@ -236,7 +232,6 @@ class Ebizmarts_MailChimp_Model_Api_Carts
      */
     protected function _getNewQuotes($scope, $scopeId, $mailchimpStoreId)
     {
-        Mage::log(__METHOD__, null, 'cartprocess.log', true);
         $allCarts = array();
 
         $quoteTable = Mage::getSingleton('core/resource')->getTableName('sales_flat_quote');
@@ -257,8 +252,6 @@ class Ebizmarts_MailChimp_Model_Api_Carts
         $newCarts->getSelect()
             ->join(array('q' => $quoteTable), $joinCondition . ' AND ' . $whereCondition, array('q.entity_id'))
             ->limit(self::BATCH_LIMIT);
-        Mage::log((string)$newCarts->getSelect(), null, 'sql.log', true);
-        Mage::log('count for new carts '.count($newCarts), null, 'cartprocess.log', true);
 //        $newCarts = Mage::getModel('sales/quote')->getCollection();
 //        $newCarts->addFieldToFilter('is_active', array('eq'=>1))
 //            ->addFieldToFilter('main_table.mailchimp_sync_delta', array(
@@ -323,7 +316,6 @@ class Ebizmarts_MailChimp_Model_Api_Carts
                 $this->_counter += 1;
             }
         }
-        Mage::log($allCarts, null, 'cartprocess.log', true);
         return $allCarts;
     }
 

@@ -82,7 +82,7 @@ class Ebizmarts_MailChimp_Model_Config
 
         //Get store scope for back end or front end
         if (!$storeId) {
-            $scopeArray = $this->_getConfigScopeId();
+            $scopeArray = Mage::helper('mailchimp')->getConfigScopeId();
         } else {
             $scopeArray['storeId'] = $storeId;
         }
@@ -380,5 +380,29 @@ class Ebizmarts_MailChimp_Model_Config
     public function getCustomMapFields()
     {
         return $this->getConfigValueForScope(Ebizmarts_MailChimp_Model_Config::GENERAL_CUSTOM_MAP_FIELDS, 'default', 0);
+    }
+
+    /**
+     * Get flag for MailChimp -> Magento synchronization.
+     * 
+     * @param $scope
+     * @param $scopeId
+     * @return mixed
+     */
+    public function getTwoWaySync($scope, $scopeId)
+    {
+        return $this->getConfigValueForScope(Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC, $scope, $scopeId);
+    }
+
+    /**
+     * Get if Email Catcher popup is enabled.
+     *
+     * @param $scope
+     * @param $scopeId
+     * @return mixed
+     */
+    public function getPopupEnabled($scope, $scopeId)
+    {
+        return $this->getConfigValueForScope(Ebizmarts_MailChimp_Model_Config::ENABLE_POPUP, $scope, $scopeId);
     }
 }

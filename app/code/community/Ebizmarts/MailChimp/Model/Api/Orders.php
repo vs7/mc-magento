@@ -23,7 +23,6 @@ class Ebizmarts_MailChimp_Model_Api_Orders
      */
     public function createBatchJson($scope, $scopeId, $mailchimpStoreId)
     {
-        Mage::log(__METHOD__, null, 'ebizmarts.log', true);
         $orderTable = Mage::getSingleton('core/resource')->getTableName('sales_flat_order');
         $collection = Mage::getModel('mailchimp/ordersyncdata')->getCollection()
             ->addFieldToFilter('scope', array('eq' => $scope . '_' . $scopeId))
@@ -44,7 +43,6 @@ class Ebizmarts_MailChimp_Model_Api_Orders
 
         $batchId = Ebizmarts_MailChimp_Model_Config::IS_ORDER.'_'. Mage::helper('mailchimp')->getDateMicrotime();
         $counter = 0;
-        Mage::log('count ' . count($collection), null, 'ebizmarts.log', true);
         foreach ($collection as $item) {
             try {
                 $order = Mage::getModel('sales/order')->load($item->getItemId());

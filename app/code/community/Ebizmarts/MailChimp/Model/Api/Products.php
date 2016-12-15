@@ -16,7 +16,6 @@ class Ebizmarts_MailChimp_Model_Api_Products
 
     public function createBatchJson($scope, $scopeId, $mailchimpStoreId)
     {
-        Mage::log(__METHOD__, null, 'ebizmarts.log', true);
         $productArray = array();
         //get customers
         $customerTable = Mage::getSingleton('core/resource')->getTableName('catalog_product_entity');
@@ -39,9 +38,7 @@ class Ebizmarts_MailChimp_Model_Api_Products
             ->join(array('p' => $customerTable), $joinCondition, array('p.entity_id'))
             ->limit(self::BATCH_LIMIT);
         $batchId = Ebizmarts_MailChimp_Model_Config::IS_PRODUCT . '_' . Mage::helper('mailchimp')->getDateMicrotime();
-        Mage::log((string)$collection->getSelect(), null, 'sql.log', true);
         $counter = 0;
-        Mage::log('count ' . count($collection), null, 'ebizmarts.log', true);
         foreach ($collection as $item) {
             $syncData = Mage::getModel('mailchimp/productsyncdata')->load($item->getId());
             $product = Mage::getModel('catalog/product')->load($item->getItemId());
