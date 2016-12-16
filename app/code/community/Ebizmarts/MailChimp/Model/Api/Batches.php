@@ -74,7 +74,7 @@ class Ebizmarts_MailChimp_Model_Api_Batches
     public function _sendEcommerceBatch($scope, $scopeId, $mailchimpStoreId)
     {
         try {
-            if (Mage::getModel('mailchimp/config')->getMailChimpEnabled($scope, $scopeId) && Mage::getModel('mailchimp/config')->isEcomSyncDataEnabled($scope, $scopeId)) {
+            if (Mage::getModel('mailchimp/config')->getMailChimpEnabled($scope, $scopeId) && Mage::helper('mailchimp')->isEcomSyncDataEnabled($scope, $scopeId)) {
 
                 $batchArray = array();
 
