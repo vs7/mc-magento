@@ -21,9 +21,9 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function saveConfig(Varien_Event_Observer $observer)
     {
-        //@Todo handle multi store
-        $generalEnabled = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_ACTIVE);
-        $listId = Mage::getModel('mailchimp/config')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_LIST);
+        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
+        $generalEnabled = Mage::getModel('mailchimp/config')->getMailChimpEnabled($scopeArray[0], $scopeArray[1]);
+        $listId = Mage::getModel('mailchimp/config')->getDefaultList($scopeArray[0], $scopeArray[1]);
 
         if ($generalEnabled && $listId) {
             $this->_createWebhook($listId);
@@ -39,11 +39,10 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     protected function _createWebhook($listId)
     {
-        //@Todo Handle Multi store
+        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
         $webhooksKey = Mage::helper('mailchimp')->getWebhooksKey();
         //Generating Webhooks URL
         $url = Ebizmarts_MailChimp_Model_ProcessWebhook::WEBHOOKS_PATH;
-        $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
         if (Mage::getModel('mailchimp/config')->getConfigValueForScope('web/secure/use_in_frontend', $scopeArray[0], $scopeArray[1])) {
             $hookUrl = Mage::getModel('core/url')->getUrl(
                 $url, array(
@@ -61,35 +60,19 @@ class Ebizmarts_MailChimp_Model_Observer
             $hookUrl = strstr($hookUrl, '?', true);
         }
         $api = Mage::helper('mailchimp')->getApi($scopeArray[0], $scopeArray[1]);
-        if (Mage::getModel('mailchimp/config')->getTwoWaySync($scopeArray[0], $scopeArray[1])) {
-            $events = array(
-                'subscribe' => true,
-                'unsubscribe' => true,
-                'profile' => true,
-                'cleaned' => true,
-                'upemail' => true,
-                'campaign' => false
-            );
-            $sources = array(
-                'user' => true,
-                'admin' => true,
-                'api' => true
-            );
-        } else {
-            $events = array(
-                'subscribe' => true,
-                'unsubscribe' => false,
-                'profile' => false,
-                'cleaned' => false,
-                'upemail' => false,
-                'campaign' => false
-            );
-            $sources = array(
-                'user' => false,
-                'admin' => false,
-                'api' => true
-            );
-        }
+        $events = array(
+            'subscribe' => true,
+            'unsubscribe' => true,
+            'profile' => true,
+            'cleaned' => true,
+            'upemail' => true,
+            'campaign' => false
+        );
+        $sources = array(
+            'user' => true,
+            'admin' => true,
+            'api' => true
+        );
         try {
             $response = $api->lists->webhooks->getAll($listId);
             $createWebhook = true;
@@ -124,7 +107,6 @@ class Ebizmarts_MailChimp_Model_Observer
     public function handleSubscriber(Varien_Event_Observer $observer)
     {
         $subscriber = $observer->getEvent()->getSubscriber();
-        //@Todo handle multi store Test
         $storeId = $subscriber->getStoreId();
         $isEnabled = Mage::getModel('mailchimp/config')->getMailChimpEnabled('stores', $storeId);
         if ($isEnabled) {
@@ -275,7 +257,6 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function addColumnToSalesOrderGrid($observer)
     {
-        //@Todo handle multi store Test
         $scopeArray = explode('-', Mage::helper('mailchimp')->getScopeString());
         $block = $observer->getEvent()->getBlock();
         if ($block instanceof Mage_Adminhtml_Block_Sales_Order_Grid && (Mage::getModel('mailchimp/config')->getAbandonedCartEnabled($scopeArray[0], $scopeArray[1]) || Mage::getModel('mailchimp/config')->getMailChimpEnabled($scopeArray[0], $scopeArray[1]))) {

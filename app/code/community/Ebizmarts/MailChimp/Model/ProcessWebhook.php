@@ -61,13 +61,18 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
             ->loadByEmail($new);
 
         if (!$newSubscriber->getId() && $oldSubscriber->getId()) {
-            $oldSubscriber->setSubscriberEmail($new)
-                ->save();
+            if (Mage::getModel('mailchimp/config')->getTwoWaySync('stores', $oldSubscriber->getStoreId())) {
+                $oldSubscriber->setSubscriberEmail($new)
+                    ->save();
+            }
         } elseif (!$newSubscriber->getId() && !$oldSubscriber->getId()) {
-            Mage::getModel('newsletter/subscriber')
-                ->setImportMode(TRUE)
-                ->setStoreId(Mage::app()->getStore()->getId())
-                ->subscribe($new);
+            $storeId = Mage::helper('mailchimp')->getStoreByListIdWithConfigEnabled($data['data']['list_id'], Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC);
+            if ($storeId) {
+                Mage::getModel('newsletter/subscriber')
+                    ->setImportMode(TRUE)
+                    ->setStoreId($storeId)
+                    ->subscribe($new);
+            }
         }
     }
 
@@ -80,14 +85,15 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
     protected function _clean(array $data)
     {
         //Delete subscriber from Magento
-        $s = Mage::getModel('newsletter/subscriber')
+        $subscriber = Mage::getModel('newsletter/subscriber')
             ->loadByEmail($data['data']['email']);
 
-        if ($s->getId()) {
+        if ($subscriber->getId() && Mage::getModel('mailchimp/config')->getTwoWaySync('stores', $subscriber->getStoreId())) {
             try {
-                $s->delete();
+                $subscriber->delete();
             } catch (Exception $e) {
                 Mage::logException($e);
+                Mage::helper('mailchimp')->logError('Webhook clean processing error: '. $e->getMessage());
             }
         }
     }
@@ -101,14 +107,13 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
     protected function _subscribe(array $data)
     {
         try {
-
             $subscriber = Mage::getModel('newsletter/subscriber')
                 ->loadByEmail($data['data']['email']);
             if ($subscriber->getId()) {
                 $subscriber->setStatus(Mage_Newsletter_Model_Subscriber::STATUS_SUBSCRIBED)
                     ->save();
             } else {
-                $storeId = Mage::helper('mailchimp')->loadStoreByListId($data['data']['list_id']);
+                $storeId = Mage::helper('mailchimp')->getStoreByListIdWithConfigEnabled($data['data']['list_id']);
                 $subscriber = Mage::getModel('newsletter/subscriber')
                     ->setStoreId($storeId)
                     ->setImportMode(TRUE);
@@ -141,7 +146,7 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
             $subscriber = Mage::getModel('newsletter/subscriber')
                 ->loadByEmail($data['data']['email']);
 
-            if ($subscriber->getId()) {
+            if ($subscriber->getId() && Mage::getModel('mailchimp/config')->getTwoWaySync('stores', $subscriber->getStoreId())) {
                 switch ($data['data']['action']) {
                     case 'delete':
                         //if config setting "Webhooks Delete action" is set as "Delete customer account"
@@ -172,11 +177,15 @@ class Ebizmarts_MailChimp_Model_ProcessWebhook
             ->addFieldToFilter('email', array('eq' => $email));
         if (count($customerCollection) > 0) {
             $customer = $customerCollection->getFirstItem();
-            Mage::getModel('mailchimp/api_customer')->setMergeVars($customer, $data['data']['merges']);
+            if (Mage::getModel('mailchimp/config')->getTwoWaySync('stores', $customer->getStoreId())) {
+                Mage::getModel('mailchimp/api_customer')->setMergeVars($customer, $data['data']['merges']);
+            }
         } else {
-            $subscriber->setSubscriberFirstname($data['data']['merges']['FNAME'])
-                ->setSubscriberLastname($data['data']['merges']['LNAME'])
-                ->save();
+            if (Mage::getModel('mailchimp/config')->getTwoWaySync('stores', $subscriber->getStoreId())) {
+                $subscriber->setSubscriberFirstname($data['data']['merges']['FNAME'])
+                    ->setSubscriberLastname($data['data']['merges']['LNAME'])
+                    ->save();
+            }
         }
     }
 }

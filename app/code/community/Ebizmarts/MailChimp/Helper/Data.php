@@ -198,9 +198,9 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
     /**
      * @return string
      */
-    public function getWebhooksKey()
+    public function getWebhooksKey($scope, $scopeId)
     {
-        $crypt = md5((string)Mage::getConfig()->getNode('global/crypt/key'));
+        $crypt = md5((string)Mage::getConfig()->getNode('global/crypt/key') . $scope . '_' . $scopeId);
         $key = substr($crypt, 0, (strlen($crypt) / 2));
 
         return $key;
@@ -359,13 +359,19 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         }
     }
 
+    /**
+     * Create merge fields configured on MailChimp remotely.
+     *
+     * @param $scope
+     * @param $scopeId
+     */
     public function createMergeFields($scope, $scopeId)
     {
-//        @Todo handle Multi Store
         $listId = Mage::getModel('mailchimp/config')->getDefaultList($scope, $scopeId);
         $maps = unserialize(Mage::getModel('mailchimp/config')->getMapFields($scope, $scopeId));
         $customFieldTypes = unserialize(Mage::getModel('mailchimp/config')->getCustomMapFields($scope, $scopeId));
-        $api = Mage::getModel('mailchimp/config')->getApi('default', 0);
+        $api = Mage::getModel('mailchimp/config')->getApi($scope, $scopeId);
+        $mailchimpFields = array();
         if ($api) {
             try {
                 $mailchimpFields = $api->lists->mergeFields->getAll($listId, null, null, 50);
@@ -459,72 +465,85 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
-     * Get Store Id by list Id.
-     * If list id found on multiple scopes
-     * Priority - First: Default List saved on particular store view.
-     *            Second: List saved on particular website.
+     * Get Store Id by list Id with config for path enabled if path given.
+     * If multiple store ids found prioritizes default scopes.
      *
-     * @return int|mixed|null
-     * @throws Mage_Core_Exception
+     * @param $listId
+     * @param null $path
+     * @return int|null|string
      */
-    public function getStoreByListId()
+    public function getStoreByListIdWithConfigEnabled($listId, $path = null)
     {
         $storeId = null;
-        $defaultStoreId = Mage::app()
-            ->getWebsite(true)
-            ->getDefaultGroup()
-            ->getDefaultStoreId();
-        $defaultWebsiteId = Mage::app()
-            ->getWebsite(true)
-            ->getId();
-
-        $listCollectionWithoutScope = Mage::getModel('core/config_data')->getCollection()
-            ->addFieldToFilter('path', array('eq' => Ebizmarts_MailChimp_Model_Config::GENERAL_LIST));
-        $listCollectionByStores = $listCollectionWithoutScope
-            ->addFieldToFilter('scope', array('eq' => 'stores'));
-        if (count($listCollectionByStores) > 1) {
-            foreach ($listCollectionByStores as $list) {
-                if ($list->getScopeId() == $defaultStoreId) {
-                    $storeId = $defaultStoreId;
+        $auxStoreId = null;
+        $magentoDefaultStoreId = null;
+        $websiteDefaultStoreId = null;
+        $stores = Mage::app()->getStores();
+        foreach ($stores as $storeId => $store) {
+            $listIdForStore = Mage::getModel('mailchimp/config')->getDefaultList('stores', $storeId);
+            if ($listId == $listIdForStore) {
+                if ($path) {
+                    if (Mage::getModel('mailchimp/config')->getConfigValueForScope($path, 'stores', $storeId)) {
+                        $auxStoreId = $storeId;
+                    }
+                } else {
+                    $auxStoreId = $storeId;
                 }
             }
-        } elseif (count($listCollectionByStores) == 1) {
-            $storeId = $listCollectionByStores->getFirstItem()->getScopeId();
-        } else {
-            $listCollectionByWebsites = $listCollectionWithoutScope
-                ->addFieldToFilter('scope', array('eq' => 'websites'));
-            if (count($listCollectionByWebsites) > 1) {
-                foreach ($listCollectionByWebsites as $list) {
-                    if ($list->scopeId() == $defaultWebsiteId) {
-                        $storeId = Mage::app()
-                            ->getWebsite($defaultWebsiteId)
-                            ->getDefaultStore()
-                            ->getId();
-                    }
-                }
-                if (!$storeId) {
-                    $websiteId = $listCollectionByWebsites->getFirstItem()->getScopeId();
-                    $storeId = Mage::app()
-                        ->getWebsite($websiteId)
-                        ->getDefaultStore()
-                        ->getId();
-                }
-            } elseif (count($listCollectionByWebsites) == 1) {
-                $websiteId = $listCollectionByWebsites->getFirstItem()->getScopeId();
-                $storeId = Mage::app()
-                    ->getWebsite($websiteId)
-                    ->getDefaultStore()
-                    ->getId();
-            } else {
-                if (count($listCollectionWithoutScope)) {
-                    $storeId = Mage::app()
-                        ->getWebsite(true)
-                        ->getDefaultGroup()
-                        ->getDefaultStoreId();
+            if ($auxStoreId) {
+                if ($this->_isMagentoDefault($auxStoreId)) {
+                    $magentoDefaultStoreId = $auxStoreId;
+                } elseif ($this->_isWebsiteDefault($auxStoreId)) {
+                    $websiteDefaultStoreId = $auxStoreId;
                 }
             }
         }
-
+        if ($magentoDefaultStoreId) {
+            $storeId = $magentoDefaultStoreId;
+        } elseif ($websiteDefaultStoreId) {
+            $storeId = $websiteDefaultStoreId;
+        } elseif ($auxStoreId) {
+            $storeId = $auxStoreId;
+        }
         return $storeId;
+    }
+
+    /**
+     * Return if given store id is Magento's default store view id.
+     *
+     * @param $storeId
+     * @return bool
+     * @throws Mage_Core_Exception
+     */
+    protected function _isMagentoDefault($storeId)
+    {
+        $magentoDefaultStoreId = Mage::app()
+            ->getWebsite(true)
+            ->getDefaultGroup()
+            ->getDefaultStoreId();
+        if ($magentoDefaultStoreId == $storeId) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Return if given store id is default for its website.
+     *
+     * @param $storeId
+     * @return bool
+     * @throws Mage_Core_Exception
+     */
+    protected function _isWebsiteDefault($storeId)
+    {
+        $websiteId = Mage::getModel('core/store')->load($storeId)->getWebsiteId();
+        $websiteDefaultStoreId = Mage::app()
+            ->getWebsite($websiteId)
+            ->getDefaultStore()
+            ->getId();
+        if ($websiteDefaultStoreId == $storeId) {
+            return true;
+        }
+        return false;
     }
 }
