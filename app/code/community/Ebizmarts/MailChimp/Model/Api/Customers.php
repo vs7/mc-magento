@@ -144,7 +144,6 @@ class Ebizmarts_MailChimp_Model_Api_Customers
      */
     public function getMergeVars($object)
     {
-        //@Todo handle multi store
         $storeId = $object->getStoreId();
         $maps = unserialize(Mage::getModel('mailchimp/config')->getMapFields('stores', $storeId));
         $websiteId = Mage::getModel('core/store')->load($storeId)->getWebsiteId();

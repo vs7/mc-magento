@@ -72,7 +72,7 @@ class Ebizmarts_MailChimp_Model_Api_subscribers
         if ($mergeVars) {
             $data["merge_fields"] = $mergeVars;
         }
-        $data["status_if_new"] = $this->_getMCStatus($subscriber->getStatus());
+        $data["status_if_new"] = $this->_getMCStatus($subscriber->getStatus(), $storeId);
 
         return $data;
     }
@@ -83,10 +83,11 @@ class Ebizmarts_MailChimp_Model_Api_subscribers
      */
     public function updateSubscriber($subscriber, $updateStatus = false)
     {
-        $listId = Mage::getModel('mailchimp/config')->getDefaultList('stores', $subscriber->getStoreId());
-        $newStatus = $this->_getMCStatus($subscriber->getStatus());
+        $storeId = $subscriber->getStoreId();
+        $listId = Mage::getModel('mailchimp/config')->getDefaultList('stores', $storeId);
+        $newStatus = $this->_getMCStatus($subscriber->getStatus(), $storeId);
         $forceStatus = ($updateStatus) ? $newStatus : null;
-        $api = Mage::helper('mailchimp')->getApi('stores', $subscriber->getStoreId());
+        $api = Mage::helper('mailchimp')->getApi('stores', $storeId);
         $mergeVars = Mage::getModel('mailchimp/api_customers')->getMergeVars($subscriber);
 
         try {
@@ -111,14 +112,14 @@ class Ebizmarts_MailChimp_Model_Api_subscribers
      * @param null $status
      * @return string
      */
-    protected function _getMCStatus($status = null)
+    protected function _getMCStatus($status = null, $storeId)
     {
-        //@Todo handle multi store
         $confirmationFlagPath = Mage_Newsletter_Model_Subscriber::XML_PATH_CONFIRMATION_FLAG;
+        $confirmationFlagEnabled = Mage::getModel('mailchimp/config')->getConfigValueForScope($confirmationFlagPath, 'stores', $storeId);
         if ($status == Mage_Newsletter_Model_Subscriber::STATUS_UNSUBSCRIBED) {
             $status = 'unsubscribed';
         } elseif (
-            Mage::getModel('mailchimp/config')->getConfigValue($confirmationFlagPath) &&
+            $confirmationFlagEnabled &&
             ($status == Mage_Newsletter_Model_Subscriber::STATUS_NOT_ACTIVE ||
                 $status == Mage_Newsletter_Model_Subscriber::STATUS_UNCONFIRMED)
         ) {

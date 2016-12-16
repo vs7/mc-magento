@@ -133,7 +133,6 @@ class Ebizmarts_MailChimp_Model_Observer
     {
         $subscriber = $observer->getEvent()->getSubscriber();
         $storeId = $subscriber->getStoreId();
-        //@Todo handle multi store Test
         $isEnabled = Mage::getModel('mailchimp/config')->getMailChimpEnabled('stores', $storeId);
         if ($isEnabled) {
             if (TRUE === $subscriber->getIsStatusChanged()) {
