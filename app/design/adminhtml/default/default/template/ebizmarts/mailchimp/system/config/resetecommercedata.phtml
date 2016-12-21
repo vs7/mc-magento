@@ -1,7 +1,7 @@
 <script type="text/javascript">
     //<![CDATA[
     function resetecommerce() {
-        if (confirm(<?php echo $this->getMessage() ?>)) {
+        if (confirm('<?php echo $this->getMessage() ?>')) {
             new Ajax.Request('<?php echo $this->getAjaxCheckUrl() ?>', {
                 method: 'get',
                 onSuccess: function (transport) {
