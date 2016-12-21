@@ -95,7 +95,7 @@ class Ebizmarts_MailChimp_Model_Api_Batches
                     $batchArray['operations'] = array_merge($batchArray['operations'], $ordersCanceledArray);
                 }
                 try {
-                    $mailchimpApi = Mage::getModel('mailchimp/config')->getApi($scope, $scopeId);
+                    $mailchimpApi = Mage::helper('mailchimp')->getApi($scope, $scopeId);
                     if (!empty($batchArray['operations'])) {
                         $batchJson = json_encode($batchArray);
                         if (!$batchJson || $batchJson == '') {
