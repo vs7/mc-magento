@@ -221,7 +221,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         foreach ($collection as $productSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_PRODUCT))
-                ->addFieldToFilter('original_id', array('eq' => $productSyncData->getItemId()));
+                ->addFieldToFilter('original_id', array('eq' => $productSyncData->getItemId()))
+                ->addFieldToFilter('scope', array(
+                    array('neq' => ''),
+                    array('null' => true),
+                    array('eq' => $scope . '_' . $scopeId)
+                ));
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
@@ -236,7 +241,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         foreach ($collection as $subscriber) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_SUBSCRIBER))
-                ->addFieldToFilter('original_id', array('eq' => $subscriber->getId()));
+                ->addFieldToFilter('original_id', array('eq' => $subscriber->getId()))
+                ->addFieldToFilter('scope', array(
+                    array('neq' => ''),
+                    array('null' => true),
+                    array('eq' => $scope . '_' . $scopeId)
+                ));
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
@@ -252,7 +262,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         foreach ($collection as $customerSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_CUSTOMER))
-                ->addFieldToFilter('original_id', array('eq' => $customerSyncData->getItemId()));
+                ->addFieldToFilter('original_id', array('eq' => $customerSyncData->getItemId()))
+                ->addFieldToFilter('scope', array(
+                    array('neq' => ''),
+                    array('null' => true),
+                    array('eq' => $scope . '_' . $scopeId)
+                ));
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
@@ -268,7 +283,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         foreach ($collection as $orderSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_ORDER))
-                ->addFieldToFilter('original_id', array('eq' => $orderSyncData->getItemId()));
+                ->addFieldToFilter('original_id', array('eq' => $orderSyncData->getItemId()))
+                ->addFieldToFilter('scope', array(
+                    array('neq' => ''),
+                    array('null' => true),
+                    array('eq' => $scope . '_' . $scopeId)
+                ));
             foreach ($errorCollection as $error) {
                 $error->delete();
             }
@@ -284,7 +304,12 @@ class Ebizmarts_MailChimp_Helper_Data extends Mage_Core_Helper_Abstract
         foreach ($collection as $quoteSyncData) {
             $errorCollection = Mage::getModel('mailchimp/mailchimperrors')->getCollection()
                 ->addFieldToFilter('regtype', array('eq' => Ebizmarts_MailChimp_Model_Config::IS_QUOTE))
-                ->addFieldToFilter('original_id', array('eq' => $quoteSyncData->getItemId()));
+                ->addFieldToFilter('original_id', array('eq' => $quoteSyncData->getItemId()))
+                ->addFieldToFilter('scope', array(
+                    array('neq' => ''),
+                    array('null' => true),
+                    array('eq' => $scope . '_' . $scopeId)
+                ));
             foreach ($errorCollection as $error) {
                 $error->delete();
             }

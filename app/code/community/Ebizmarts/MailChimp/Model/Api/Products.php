@@ -45,7 +45,7 @@ class Ebizmarts_MailChimp_Model_Api_Products
             $product->getTierPrice();
             //define variants and root products
             if ($item->getMailchimpSyncModified() && $item->getMailchimpSyncDelta() && $item->getMailchimpSyncDelta() > Mage::getModel('mailchimp/config')->getMCMinSyncDateFlag($scope, $scopeId)) {
-                $productArray = array_merge($this->_buildOldProductRequest($product, $batchId, $mailchimpStoreId), $productArray);
+                $productArray = array_merge($this->_buildOldProductRequest($product, $batchId, $scope, $scopeId, $mailchimpStoreId), $productArray);
                 $counter = (count($productArray));
                 $syncData->setData("mailchimp_sync_delta", Varien_Date::now())
                     ->setData("mailchimp_sync_error", "")
@@ -118,7 +118,7 @@ class Ebizmarts_MailChimp_Model_Api_Products
         return $data;
     }
 
-    protected function _buildOldProductRequest($product, $batchId, $mailchimpStoreId)
+    protected function _buildOldProductRequest($product, $batchId, $scope, $scopeId, $mailchimpStoreId)
     {
         $operations = array();
         if ($product->getTypeId() == Mage_Catalog_Model_Product_Type::TYPE_SIMPLE || $product->getTypeId() == Mage_Catalog_Model_Product_Type::TYPE_VIRTUAL || $product->getTypeId() == "downloadable") {
@@ -132,32 +132,34 @@ class Ebizmarts_MailChimp_Model_Api_Products
 
             //add or update variant
             foreach ($parentIds as $parentId) {
-                $variendata = array();
-                $variendata["id"] = $data["id"];
-                $variendata["title"] = $data["title"];
-                $variendata["url"] = $data["url"];
-                $variendata["sku"] = $data["sku"];
-                $variendata["price"] = $data["price"];
-                $variendata["inventory_quantity"] = $data["inventory_quantity"];
-                $variendata["image_url"] = $data["image_url"];
-                $variendata["backorders"] = $data["backorders"];
-                $variendata["visibility"] = $data["visibility"];
-                $productdata = array();
-                $productdata['method'] = "PUT";
-                $productdata['path'] = "/ecommerce/stores/" . $mailchimpStoreId . "/products/".$parentId.'/variants/'.$data['id'];
-                $productdata['operation_id'] = $batchId . '_' . $parentId;
-                try {
-                    $body = json_encode($variendata);
+                $parent = $this->loadByScopeAndId($scope, $scopeId, $parentId);
+                if ($parent && $parent->getMailchimpSyncDelta() > Mage::getModel('mailchimp/config')->getMCMinSyncDateFlag($scope, $scopeId)) {
+                    $variendata = array();
+                    $variendata["id"] = $data["id"];
+                    $variendata["title"] = $data["title"];
+                    $variendata["url"] = $data["url"];
+                    $variendata["sku"] = $data["sku"];
+                    $variendata["price"] = $data["price"];
+                    $variendata["inventory_quantity"] = $data["inventory_quantity"];
+                    $variendata["image_url"] = $data["image_url"];
+                    $variendata["backorders"] = $data["backorders"];
+                    $variendata["visibility"] = $data["visibility"];
+                    $productdata = array();
+                    $productdata['method'] = "PUT";
+                    $productdata['path'] = "/ecommerce/stores/" . $mailchimpStoreId . "/products/" . $parentId . '/variants/' . $data['id'];
+                    $productdata['operation_id'] = $batchId . '_' . $parentId;
+                    try {
+                        $body = json_encode($variendata);
 
-                } catch (Exception $e) {
-                    //json encode failed
-                    Mage::helper('mailchimp')->logError("Product " . $product->getId() . " json encode failed");
-                    continue;
+                    } catch (Exception $e) {
+                        //json encode failed
+                        Mage::helper('mailchimp')->logError("Product " . $product->getId() . " json encode failed");
+                        continue;
+                    }
+                    $productdata['body'] = $body;
+                    $operations[] = $productdata;
                 }
-                $productdata['body'] = $body;
-                $operations[] = $productdata;
             }
-
         }
         return $operations;
     }
@@ -240,7 +242,7 @@ class Ebizmarts_MailChimp_Model_Api_Products
                     continue;
                 }
                 if ($productSyncData->getMailchimpSyncDelta() > Mage::getModel('mailchimp/config')->getMCMinSyncDateFlag($scope, $scopeId)) {
-                    $data = $this->_buildOldProductRequest($product, $batchId, $mailchimpStoreId);
+                    $data = $this->_buildOldProductRequest($product, $batchId, $scope, $scopeId, $mailchimpStoreId);
                     $this->_updateProduct($product, $scope, $scopeId);
                 } elseif ($productSyncData->getMailchimpSyncDelta() < Mage::getModel('mailchimp/config')->getMCMinSyncDateFlag($scope, $scopeId)) {
                     $data = array($this->_buildNewProductRequest($product, $batchId, $mailchimpStoreId));

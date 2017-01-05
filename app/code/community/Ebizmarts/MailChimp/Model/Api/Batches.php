@@ -361,6 +361,7 @@ class Ebizmarts_MailChimp_Model_Api_Batches
                     $mailchimpErrors->setRegtype($type);
                     $mailchimpErrors->setOriginalId($id);
                     $mailchimpErrors->setBatchId($batchId);
+                    $mailchimpErrors->setScope($scope . '_' . $scopeId);
                     $mailchimpErrors->save();
                     Mage::helper('mailchimp')->logError($error);
                 }

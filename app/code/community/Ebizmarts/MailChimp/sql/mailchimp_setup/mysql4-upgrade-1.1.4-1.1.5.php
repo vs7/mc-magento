@@ -59,4 +59,18 @@ $installer->run(
 "
 );
 
+try {
+    $installer->run(
+        "
+ ALTER TABLE `{$this->getTable('mailchimp_errors')}`
+ ADD column `scope` varchar(16) DEFAULT 0;
+ "
+    );
+}
+catch (Exception $e)
+{
+    Mage::log($e->getMessage());
+}
+
+
 $installer->endSetup();
