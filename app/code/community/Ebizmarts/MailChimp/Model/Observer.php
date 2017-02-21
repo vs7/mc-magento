@@ -47,11 +47,13 @@ class Ebizmarts_MailChimp_Model_Observer
             'wkey' => $webhooksKey,
             '_nosid' => true,
             '_secure' => true,
-        ));
+            )
+        );
 
         if (FALSE != strstr($hookUrl, '?', true)) {
             $hookUrl = strstr($hookUrl, '?', true);
         }
+
         $api = Mage::helper('mailchimp')->getApi();
         if (Mage::helper('mailchimp')->getConfigValue(Ebizmarts_MailChimp_Model_Config::GENERAL_TWO_WAY_SYNC)) {
             $events = array(
@@ -82,6 +84,7 @@ class Ebizmarts_MailChimp_Model_Observer
                 'api' => true
             );
         }
+
         try {
             $response = $api->lists->webhooks->getAll($listId);
             $createWebhook = true;
@@ -92,6 +95,7 @@ class Ebizmarts_MailChimp_Model_Observer
                     }
                 }
             }
+
             if ($createWebhook) {
                 $api->lists->webhooks->add($listId, $hookUrl, $events, $sources);
             }
@@ -161,14 +165,14 @@ class Ebizmarts_MailChimp_Model_Observer
         if (!isset($block)) {
             return $this;
         }
-        if ($block instanceof Mage_Adminhtml_Block_Newsletter_Subscriber_Grid) {
 
+        if ($block instanceof Mage_Adminhtml_Block_Newsletter_Subscriber_Grid) {
             $block->addColumnAfter(
                 'firstname', array(
                 'header' => Mage::helper('newsletter')->__('Customer First Name'),
                 'index' => 'customer_firstname',
                 'renderer' => 'mailchimp/adminhtml_newsletter_subscriber_renderer_firstname',
-            ), 'type'
+                ), 'type'
             );
 
             $block->addColumnAfter(
@@ -176,9 +180,10 @@ class Ebizmarts_MailChimp_Model_Observer
                 'header' => Mage::helper('newsletter')->__('Customer Last Name'),
                 'index' => 'customer_lastname',
                 'renderer' => 'mailchimp/adminhtml_newsletter_subscriber_renderer_lastname'
-            ), 'firstname'
+                ), 'firstname'
             );
         }
+
         return $observer;
     }
 
@@ -233,6 +238,7 @@ class Ebizmarts_MailChimp_Model_Observer
         } else {
             $order->setMailchimpUpdateObserverRan(true);
         }
+
         //update mailchimp ecommerce data for that product variant
         Mage::getModel('mailchimp/api_orders')->update($order);
         $landingCookie = $this->_getLandingCookie();
@@ -253,34 +259,37 @@ class Ebizmarts_MailChimp_Model_Observer
         if ($this->_getCampaignCookie()) {
             Mage::getModel('core/cookie')->delete('mailchimp_campaign_id');
         }
-        if( ($this->_getLandingCookie())) {
-            Mage::getModel('core/cookie')->delete('maichimp_landing_page');
+
+        if ($this->_getLandingCookie()) {
+            Mage::getModel('core/cookie')->delete('mailchimp_landing_page');
         }
+
         return $observer;
     }
 
     /**
-     * Get campaign cooke if available.
+     * Get campaign cookie if available.
      *
-     * @return null
+     * @return mixed
      */
     protected function _getCampaignCookie()
     {
-        $cookie = Mage::getModel('core/cookie')->get('mailchimp_campaign_id');
-        if ($cookie && Mage::getModel('core/cookie')->getLifetime('mailchimp_campaign_id') == Mage::getStoreConfig(Mage_Core_Model_Cookie::XML_PATH_COOKIE_LIFETIME, Mage::app()->getStore()->getId())) {
-            return $cookie;
-        } else {
-            return null;
+        $landingCookie = $this->_getLandingCookie();
+        if (preg_match("/utm_source=mailchimp/", $landingCookie)) {
+            return false;
         }
+
+        return Mage::getModel('core/cookie')->get('mailchimp_campaign_id');
     }
+
+    /**
+     * Get landing cookie if available.
+     *
+     * @return mixed
+     */
     protected function _getLandingCookie()
     {
-        $cookie = Mage::getModel('core/cookie')->get('maichimp_landing_page');
-        if ($cookie && Mage::getModel('core/cookie')->getLifetime('maichimp_landing_page') == Mage::getStoreConfig(Mage_Core_Model_Cookie::XML_PATH_COOKIE_LIFETIME, Mage::app()->getStore()->getId())) {
-            return $cookie;
-        } else {
-            return null;
-        }
+        return Mage::getModel('core/cookie')->get('mailchimp_landing_page');
     }
 
     /**
@@ -302,9 +311,10 @@ class Ebizmarts_MailChimp_Model_Observer
                 'renderer' => 'mailchimp/adminhtml_sales_order_grid_renderer_mailchimp',
                 'sortable' => false,
                 'width' => 70
-            ), 'created_at'
+                ), 'created_at'
             );
         }
+
         return $observer;
     }
 
@@ -318,15 +328,14 @@ class Ebizmarts_MailChimp_Model_Observer
             if (!$mailchimpStore) {
                 Mage::helper('mailchimp')->resetMCEcommerceData();
             }
+
             if (!Mage::helper('mailchimp')->getMCStoreId()) {
                 $warningMessage = 'The MailChimp store was not created properly, please save your configuration to create it.';
                 Mage::getSingleton('adminhtml/session')->addWarning($warningMessage);
             }
-
         } catch (Mailchimp_Error $e) {
             Mage::helper('mailchimp')->logError($e->getFriendlyMessage());
             Mage::getSingleton('adminhtml/session')->addError($e->getFriendlyMessage());
-
         } catch (Exception $e) {
             Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
         }
@@ -360,14 +369,17 @@ class Ebizmarts_MailChimp_Model_Observer
                 }
             }
         }
+
         $campaignId = $this->_getCampaignCookie();
         if ($campaignId) {
             $quote->setMailchimpCampaignId($campaignId);
         }
+
         $landingCookie = $this->_getLandingCookie();
         if ($landingCookie) {
             $quote->setMailchimpLandingPage($landingCookie);
         }
+
         return $observer;
     }
 
@@ -380,12 +392,14 @@ class Ebizmarts_MailChimp_Model_Observer
      */
     public function newOrder(Varien_Event_Observer $observer)
     {
-        if( ($this->_getLandingCookie())) {
-            Mage::getModel('core/cookie')->delete('maichimp_landing_page');
+        if(($this->_getLandingCookie())) {
+            Mage::getModel('core/cookie')->delete('mailchimp_landing_page');
         }
+
         if ($this->_getCampaignCookie()) {
             Mage::getModel('core/cookie')->delete('mailchimp_campaign_id');
         }
+
         $order = $observer->getEvent()->getOrder();
         $items = $order->getAllItems();
         foreach ($items as $item)
@@ -393,11 +407,13 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
+
             $product = Mage::getModel('catalog/product')->load($item->getProductId());
             $product->setData('mailchimp_sync_modified', 1);
             $resource = $product->getResource();
             $resource->saveAttribute($product, 'mailchimp_sync_modified');
         }
+
         return $observer;
     }
 
@@ -417,11 +433,13 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
+
             $product = Mage::getModel('catalog/product')->load($item->getProductId());
             $product->setData('mailchimp_sync_modified', 1);
             $resource = $product->getResource();
             $resource->saveAttribute($product, 'mailchimp_sync_modified');
         }
+
         $creditMemo->getOrder()->setMailchimpSyncModified(1);
         return $observer;
     }
@@ -442,11 +460,13 @@ class Ebizmarts_MailChimp_Model_Observer
             if ($item->getProductType()=='bundle' || $item->getProductType()=='configurable') {
                 continue;
             }
+
             $product = Mage::getModel('catalog/product')->load($item->getProductId());
             $product->setData('mailchimp_sync_modified', 1);
             $resource = $product->getResource();
             $resource->saveAttribute($product, 'mailchimp_sync_modified');
         }
+
         $creditMemo->getOrder()->setMailchimpSyncModified(1);
         return $observer;
     }
@@ -467,10 +487,12 @@ class Ebizmarts_MailChimp_Model_Observer
             $resource = $product->getResource();
             $resource->saveAttribute($product, 'mailchimp_sync_modified');
         }
+
         return $observer;
     }
 
-    public function addOrderViewMonkey(Varien_Event_Observer $observer){
+    public function addOrderViewMonkey(Varien_Event_Observer $observer)
+    {
         $block = $observer->getBlock();
         if(($block->getNameInLayout() == 'order_info') && ($child = $block->getChild('mailchimp.order.info.monkey.block'))){
             $transport = $observer->getTransport();
